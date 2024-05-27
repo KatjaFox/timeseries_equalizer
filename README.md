@@ -1,3 +1,6 @@
+# The class containing the timeseuence equalizer logic is in:
+/src/ProcessTelemetryData/domain/TimeSeriesEqualizer/timesequence_equalizer.py
+
 # To find the required output.json to provided input.json check the root directory: 
 output.json
 

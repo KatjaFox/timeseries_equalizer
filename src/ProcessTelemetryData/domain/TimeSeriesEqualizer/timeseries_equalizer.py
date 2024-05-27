@@ -1,5 +1,4 @@
 from typing import List, TypedDict
-import json
 from collections import Counter
 from datetime import datetime,timedelta
 
@@ -13,7 +12,26 @@ class GranularityOperationsDict(TypedDict):
     timeseries: List[TimeseriesEntry]
 
 class TimeseriesEqualizer:
+    """
+    A class for equalizing timeseries data.
+
+    Methods:
+    equalize_timeseries(granularity_operations_input: GranularityOperationsDict) -> GranularityOperationsDict:
+        Equalizes the input timeseries data by resampling to regular 30 min intervals.
+
+    """
+        
     def equalize_timeseries(self, granularity_operations_input: GranularityOperationsDict) -> GranularityOperationsDict:
+        """
+        Equalizes the input timeseries data by resampling to regular 30 min intervals.
+
+        Args:
+        granularity_operations_input (GranularityOperationsDict): The input data json containing timeseries to be equalized.
+
+        Returns:
+        GranularityOperationsDict: The equalized timeseries data in json.
+        """
+                
         self._validate_input(granularity_operations_input)
         self._validate_unique_timestamps(granularity_operations_input)
         granularity_operations_output_dict = granularity_operations_input
@@ -25,6 +43,15 @@ class TimeseriesEqualizer:
         return granularity_operations_output_dict
 
     def _resample_timeseries_data(self, timeseries:List[TimeseriesEntry]) -> List[TimeseriesEntry]:
+        """
+        Resamples the timeseries data to regular intervals of 30 minutes using time-weighted average.
+
+        Args:
+        timeseries (List[TimeseriesEntry]): The input timeseries data.
+
+        Returns:
+        List[TimeseriesEntry]: The resampled timeseries data.
+        """
         if len(timeseries) > 1:
             datetime_timeseries =self._convert_to_datetime(timeseries=timeseries)
             current_time = self._get_first_rounded_datetime(datetime_timeseries=datetime_timeseries)
@@ -80,12 +107,31 @@ class TimeseriesEqualizer:
 
         
     def _validate_unique_timestamps(self, granularity_operations_input: GranularityOperationsDict):
+        """
+        Validates that the timestamps in the timeseries data are unique.
+
+        Args:
+        granularity_operations_input (GranularityOperationsDict): The input data containing timeseries to be validated.
+
+        Raises:
+        ValueError: If duplicate timestamps are found in the timeseries data.
+        """
         timestamp_counts = Counter(entry.get("timestamp") for entry in granularity_operations_input.get("timeseries", []))
         duplicates = [timestamp for timestamp, count in timestamp_counts.items() if count > 1]
         if duplicates:
             raise ValueError(f"Duplicate timestamps found in timeseries data: {duplicates}")
 
+
     def _validate_input(self, granularity_operations_input: GranularityOperationsDict):
+        """
+        Validates the format of the input data.
+
+        Args:
+        granularity_operations_input (GranularityOperationsDict): The input data to be validated.
+
+        Raises:
+        TypeError: If the input data does not meet the required format.
+        """
         if not isinstance(granularity_operations_input.get("turbine"), str):
             raise TypeError("Turbine must be a string.")
         
