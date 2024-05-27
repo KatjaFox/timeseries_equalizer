@@ -1,17 +1,19 @@
-# Required output.json to provided input.json is in root directory: 
-# output.json
+# To find the required output.json to provided input.json check the root directory: 
+output.json
 
 
 # To start the unittests run:
-# > python -m unittest discover tests
+> python -m unittest discover tests
 
 # To run the timeseries equalizer in the command line:
-# > python run_timeseries_equalizer.py "path/to/input.json"
-# the output file will be saved in the same plaxe as input with *_output.json in the end
+> python run_timeseries_equalizer.py "path/to/input.json"
+
+the output file will be saved in the same plaxe as input with *_output.json in the end
 
 # To run a local flask server:
-# > pip install -r requirements.txt
-# > python run_server.py
+> pip install -r requirements.txt
+> 
+> python run_server.py
 
 # To upload json file and get the equalized result through the API:
 send a post request to localhost:5000/process-data with the json 
