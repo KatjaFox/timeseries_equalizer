@@ -22,8 +22,6 @@ class TimeseriesEqualizer:
 
         granularity_operations_output_dict["timeseries"] = self._resample_timeseries_data(timeseries=timeseries)
         
-        self._save_to_json(granularity_operations_output_dict)
-
         return granularity_operations_output_dict
 
     def _resample_timeseries_data(self, timeseries:List[TimeseriesEntry]) -> List[TimeseriesEntry]:
@@ -70,11 +68,6 @@ class TimeseriesEqualizer:
             new_entry = datetime.fromtimestamp(entry.get("timestamp")/1000)
             datetime_timeseries.append({"timestamp":new_entry, "value": entry.get("value")})
         return datetime_timeseries
-    
-    def _save_to_json(self, data: GranularityOperationsDict) -> None:
-        file_path = "output.json"
-        with open(file_path, "w") as json_file:
-            json.dump(data, json_file)
 
     def _get_first_rounded_datetime(self, datetime_timeseries:List[TimeseriesEntry]) -> datetime:
         datetimes = [entry["timestamp"] for entry in datetime_timeseries]
@@ -112,110 +105,3 @@ class TimeseriesEqualizer:
             if not isinstance(entry.get("value"), (float, int)) and entry.get("value") is not None:
                 raise TypeError("Value must be a float or an integer or None.")
             
-
-if __name__ == '__main__':
-    inputTest = {
-        "turbine": "Freudenau Turbine 2",
-        "power_unit": "MW",
-        "timeseries": [
-            {
-                "timestamp": 1586901600000,
-                "value": 12
-            },
-            {
-                "timestamp": 1586902200000,
-                "value": 5.01
-            },
-            {
-                "timestamp": 1586923200000,
-                "value": 20.043
-            },
-            {
-                "timestamp": 1586940600000,
-                "value": 32.01
-            },
-            {
-                "timestamp": 1586957400000,
-                "value": 23.4
-            },
-            {
-                "timestamp": 1586958000000,
-                "value": 23.5
-            },
-            {
-                "timestamp": 1586958600000,
-                "value": 24.92
-            },
-            {
-                "timestamp": 1586958720000,
-                "value": 26.7
-            },
-            {
-                "timestamp": 1586959080000,
-                "value": 32.034
-            },
-            {
-                "timestamp": 1586959200000,
-                "value": 32.000001
-            },
-            {
-                "timestamp": 1586964000000,
-                "value": 29.95665
-            },
-            {
-                "timestamp": 1586966400000,
-                "value": 30.2
-            },
-            {
-                "timestamp": 1586977200000,
-                "value": 0.001
-            },
-            {
-                "timestamp": 1586994600000,
-                "value": -0.0002
-            },
-            {
-                "timestamp": 1586996400000,
-                "value": 0
-            },
-            {
-                "timestamp": 1586998800000,
-                "value": 2.0
-            },
-            {
-                "timestamp": 1587002400000,
-                "value": 2.5
-            },
-            {
-                "timestamp": 1587006000000,
-                "value": 3.3
-            },
-            {
-                "timestamp": 1587009600000,
-                "value": 4.4
-            },
-            {
-                "timestamp": 1587013200000,
-                "value": 5.5
-            },
-            {
-                "timestamp": 1587016800000,
-                "value": 6.6
-            },
-            {
-                "timestamp": 1587020400000,
-                "value": 7.7
-            },
-            {
-                "timestamp": 1587056400000,
-                "value": 0.0
-            },
-            {
-                "timestamp": 1587074400000,
-                "value": None
-            }
-        ]
-    }
-    
-    equalizer = TimeseriesEqualizer()
-    result = equalizer.equalize_timeseries(inputTest)
