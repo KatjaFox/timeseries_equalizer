@@ -1,4 +1,4 @@
-from src.ProcessTelemetryData.domain.TimeSeriesEqualizer.timeseries_equalizer import TimeseriesEqualizer, GranularityOperationsDict
+from src.process_telemetry_data.business_logic.time_series_equalizer.timeseries_equalizer import TimeseriesEqualizer, GranularityOperationsDict
 import json
 
 class TimesequenceService:
@@ -9,6 +9,6 @@ class TimesequenceService:
         return equalized_data
     
     def _save_to_json(self, data: GranularityOperationsDict) -> None:
-        file_path = "src/ProcessTelemetryData/domain/storage/output.json"
+        file_path = "src/process_telemetry_data/business_logic/output/output.json"
         with open(file_path, "w") as json_file:
             json.dump(data, json_file)

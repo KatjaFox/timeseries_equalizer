@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from src.ProcessTelemetryData.domain.service.process_turbine_telemetry_power_data_service import TimesequenceService
+from src.process_telemetry_data.business_logic.service.process_turbine_telemetry_power_data_service import TimesequenceService
 from flask_restful import Resource
 
 
