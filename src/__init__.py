@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_restful import Api
-from .ProcessTelemetryData.controller.process_turbine_power_data_controller import timesequence_bp, ProcessTimesequence
+from .process_telemetry_data.controller.process_turbine_power_data_controller import timesequence_bp, ProcessTimesequence
 from flasgger import Swagger
 
 def create_app():

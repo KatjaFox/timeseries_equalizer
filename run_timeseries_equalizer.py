@@ -1,7 +1,7 @@
 import sys
 import json
 import os
-from src.ProcessTelemetryData.domain.TimeSeriesEqualizer.timeseries_equalizer import TimeseriesEqualizer
+from src.process_telemetry_data.business_logic.time_series_equalizer.timeseries_equalizer import TimeseriesEqualizer
 
 
 def main():
@@ -9,7 +9,7 @@ def main():
     if len(sys.argv) != 2:
         print("Error: python run_timeseries_equalizer.py <json_file_path>")
         sys.exit(1)
-    
+
     json_file_path = sys.argv[1]
     try:
         with open(json_file_path, "r") as file:
@@ -31,6 +31,7 @@ def main():
         json.dump(modified_data, outfile, indent=4)
 
     print(f"Output JSON saved as: {output_file_path}")
+
 
 if __name__ == "__main__":
     main()
