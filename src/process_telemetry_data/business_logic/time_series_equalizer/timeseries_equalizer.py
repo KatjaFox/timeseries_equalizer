@@ -8,11 +8,6 @@ class TimeseriesEntry(TypedDict):
     value: float
 
 
-class DatetimeWithWeightedAverage(TypedDict):
-    time: datetime
-    weighted_average: float
-
-
 class GranularityOperationsDict(TypedDict):
     turbine: str
     power_unit: str
@@ -52,7 +47,7 @@ class TimeseriesEqualizer:
 
     def create_interval_array(self, first: datetime, last: datetime, minute_interval: int):
         num_intervals = int((last - first) / timedelta(minutes=minute_interval)) + 1
-        return [{"time": first + timedelta(minutes=minute_interval * i), "weighted_average": 0.00} for i in
+        return [{"timestamp": first + timedelta(minutes=minute_interval * i), "value": 0.00} for i in
                 range(num_intervals)]
 
     def _resample_timeseries_data(self, timeseries: List[TimeseriesEntry]) -> List[TimeseriesEntry]:
@@ -70,7 +65,7 @@ class TimeseriesEqualizer:
         datetime_timeseries: List[TimeseriesEntry] = self._convert_timestamp_to_datetime(timeseries=timeseries)
         first_time: datetime = self._get_first_rounded_datetime(datetime_timeseries=datetime_timeseries)
         last_time: datetime = self._get_last_rounded_datetime(datetime_timeseries=datetime_timeseries)
-        intervals: [DatetimeWithWeightedAverage] = self.create_interval_array(first_time, last_time, minute_interval)
+        intervals: [TimeseriesEntry] = self.create_interval_array(first_time, last_time, minute_interval)
 
         if len(timeseries) <= 1 or len(intervals) == 0:
             return []
@@ -79,64 +74,88 @@ class TimeseriesEqualizer:
         weighted_sum = 0
         total_duration = 0
         interval_weighted_average = 0
-        resampled_timeseries_output: List[TimeseriesEntry] = []
 
         for i, entry in enumerate(datetime_timeseries):
             if self.entry_between_current_intervals(current_interval_index, entry, intervals):
-                if not self.next_entry_exists(datetime_timeseries, i) or self.next_entry_overflow_next_interval(
-                        current_interval_index, datetime_timeseries, i, intervals):
-                    duration = (intervals[current_interval_index]["time"] + timedelta(minutes=30) - entry[
-                        "timestamp"]).total_seconds()
-                else:
-                    duration = (datetime_timeseries[i + 1]["timestamp"] -
-                                entry["timestamp"]).total_seconds()
-                weighted_sum += entry["value"] * duration
+                duration = self.calculate_duration(current_interval_index, datetime_timeseries, entry, i,
+                                                                 intervals, weighted_sum)
+                weighted_sum += self.calculate_time_weighted_sum(duration, entry)
                 total_duration += duration
-                # weighted average based on duration of different data entries inside the interval (30 min)
-                interval_weighted_average = weighted_sum / total_duration
-                intervals[current_interval_index]["weighted_average"] = 0 if total_duration == 0 \
-                    else interval_weighted_average
+                interval_weighted_average = self.calculate_interval_weighted_average(total_duration, weighted_sum)
+                intervals[current_interval_index]["value"] = interval_weighted_average
 
-                # if there is a next data entry then
-                if self.next_entry_exists(datetime_timeseries, i) and self.next_entry_overflow_next_interval(
-                        current_interval_index, datetime_timeseries, i, intervals):
+                if self.next_entry_exists_and_overflow(current_interval_index, datetime_timeseries, i, intervals):
                     weighted_sum = 0
                     total_duration = 0
                     previous_index = current_interval_index
 
-                    if i + 1 >= len(datetime_timeseries) - 1:
-                        current_interval_index = len(intervals) - 1
-                    else:
-                        # next interval point is decided based on next data point, if inside or overflowing
-                        current_interval_index = next((idx - 1 for idx, interval in
-                                                       enumerate(intervals[current_interval_index + 1:],
-                                                                 start=current_interval_index + 1)
-                                                       if
-                                                       interval["time"] > datetime_timeseries[i + 1]["timestamp"]),
-                                                      current_interval_index + 1)
-                    # fill overflowed intervals with previous time weighted average data
-                    intervals[previous_index:current_interval_index] = [
-                        {**interval, "weighted_average": interval_weighted_average}
-                        for interval in intervals[previous_index:current_interval_index]
-                    ]
+                    current_interval_index = self.calculate_next_interval_index(current_interval_index,
+                                                                                datetime_timeseries, i, intervals)
+                    self._fill_overflowed_intervals(previous_index, current_interval_index, intervals,
+                                                    interval_weighted_average)
 
         resampled_timeseries_output = [
-            {"timestamp": int(interval["time"].timestamp() * 1000), "value": interval["weighted_average"]}
+            {"timestamp": int(interval["timestamp"].timestamp() * 1000), "value": interval["value"]}
             for interval in intervals
         ]
         return resampled_timeseries_output
 
+    def calculate_next_interval_index(self, current_interval_index, datetime_timeseries, i, intervals):
+        if i + 1 >= len(datetime_timeseries) - 1:
+            current_interval_index = len(intervals) - 1
+        else:
+            current_interval_index = self._get_next_interval_index(current_interval_index,
+                                                                   datetime_timeseries, i, intervals)
+        return current_interval_index
+
+    def calculate_time_weighted_sum(self, duration, entry):
+        return entry["value"] * duration
+
+    def calculate_duration(self, current_interval_index, datetime_timeseries, entry, i, intervals, weighted_sum):
+        if not self.next_entry_exists(datetime_timeseries, i) or self.next_entry_overflow_next_interval(
+                current_interval_index, datetime_timeseries, i, intervals):
+            duration = (intervals[current_interval_index]["timestamp"] + timedelta(minutes=30) - entry[
+                "timestamp"]).total_seconds()
+        else:
+            duration = (datetime_timeseries[i + 1]["timestamp"] -
+                        entry["timestamp"]).total_seconds()
+        return duration
+
+    def calculate_interval_weighted_average(self, total_duration, weighted_sum):
+        # weighted average based on duration of different data entries inside the interval (30 min)
+        return 0 if total_duration == 0 else weighted_sum / total_duration
+
+    def next_entry_exists_and_overflow(self, current_interval_index, datetime_timeseries, i, intervals):
+        return self.next_entry_exists(datetime_timeseries, i) and self.next_entry_overflow_next_interval(
+            current_interval_index, datetime_timeseries, i, intervals)
+
+    def _get_next_interval_index(self, current_interval_index: int, datetime_timeseries: List[TimeseriesEntry], i: int,
+                                 intervals: List[TimeseriesEntry]) -> int:
+        return next((idx - 1 for idx, interval in
+                     enumerate(intervals[current_interval_index + 1:],
+                               start=current_interval_index + 1)
+                     if
+                     interval["timestamp"] > datetime_timeseries[i + 1]["timestamp"]),
+                    current_interval_index + 1)
+
+    def _fill_overflowed_intervals(self, previous_index: int, current_interval_index: int,
+                                   intervals: List[TimeseriesEntry], interval_weighted_average: float):
+        intervals[previous_index:current_interval_index] = [
+            {**interval, "value": interval_weighted_average}
+            for interval in intervals[previous_index:current_interval_index]
+        ]
+
     def entry_between_current_intervals(self, current_interval_index, entry, intervals):
-        return intervals[current_interval_index]["time"] <= entry["timestamp"] and (
+        return intervals[current_interval_index]["timestamp"] <= entry["timestamp"] and (
                 not self.next_entry_exists(intervals, current_interval_index) or entry["timestamp"] <
-                intervals[current_interval_index + 1]["time"])
+                intervals[current_interval_index + 1]["timestamp"])
 
     def next_entry_exists(self, datetime_timeseries, i):
         return i + 1 < len(datetime_timeseries)
 
     def next_entry_overflow_next_interval(self, current_interval_index, datetime_timeseries, i, intervals):
         return current_interval_index + 1 < len(intervals) and \
-            datetime_timeseries[i + 1]["timestamp"] >= intervals[current_interval_index + 1]["time"]
+            datetime_timeseries[i + 1]["timestamp"] >= intervals[current_interval_index + 1]["timestamp"]
 
     def _remove_last_entry(self, timeseries: List[TimeseriesEntry]) -> List[TimeseriesEntry]:
         if timeseries and timeseries[-1]["value"] is None:
